@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Vault, UserPosition, ProtocolStats, IntentResponse } from '@/types'
 import { MOCK_VAULTS, PROTOCOL_STATS } from '@/data/mockData'
+import { fetchLiveTokenData, type TokenData } from '@/lib/priceService'
 
 interface AppStore {
   // Data
@@ -9,6 +10,7 @@ interface AppStore {
   userPositions: UserPosition[]
   protocolStats: ProtocolStats
   elpBalance: number
+  tokenPrices: Record<string, TokenData>
   
   // UI State
   activeTab: 'vaults' | 'swap' | 'portfolio' | 'governance' | 'analytics' | 'launch'
@@ -44,6 +46,7 @@ interface AppStore {
   setIntentError: (error: string | null) => void
   clearIntent: () => void
   tick: () => void
+  fetchPrices: () => Promise<void>
 }
 
 export const useAppStore = create<AppStore>()(
@@ -53,6 +56,8 @@ export const useAppStore = create<AppStore>()(
       userPositions: [],
       protocolStats: PROTOCOL_STATS,
       elpBalance: 10000,
+      tokenPrices: {},
+      
       activeTab: 'vaults',
       selectedVaultId: null,
       depositModalOpen: false,
@@ -174,6 +179,17 @@ export const useAppStore = create<AppStore>()(
             vaults: newVaults,
             simulatedTick: state.simulatedTick + 1,
           }
+        })
+      },
+
+      fetchPrices: async () => {
+        const prices = await fetchLiveTokenData()
+        set((state) => {
+          // Merge new prices, don't overwrite completely if API fails for some
+          if (Object.keys(prices).length > 0) {
+             return { tokenPrices: { ...state.tokenPrices, ...prices } }
+          }
+          return state
         })
       },
     }),

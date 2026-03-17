@@ -4,6 +4,7 @@ import { ArrowDownUp, ArrowRight, ChevronDown, Info, Zap, Shield, Settings, X, C
 import { TOKEN_ICONS } from '@/data/mockData'
 import { formatUSD } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
+import type { TokenData } from '@/lib/priceService'
 
 // Simulated token prices
 const TOKEN_PRICES: Record<string, number> = {
@@ -29,9 +30,10 @@ interface TokenSelectorProps {
   onSelect: (token: string) => void
   exclude: string
   label: string
+  tokenPricesStore: Record<string, TokenData>
 }
 
-function TokenSelector({ selected, onSelect, exclude, label }: TokenSelectorProps) {
+function TokenSelector({ selected, onSelect, exclude, label, tokenPricesStore }: TokenSelectorProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -40,7 +42,11 @@ function TokenSelector({ selected, onSelect, exclude, label }: TokenSelectorProp
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-2 border border-white/[0.08] hover:border-elp-500/20 transition-colors"
       >
-        <span className="text-lg">{TOKEN_ICONS[selected] || '🪙'}</span>
+        {tokenPricesStore[selected]?.image ? (
+          <img src={tokenPricesStore[selected].image} alt={selected} className="w-5 h-5 rounded-full" />
+        ) : (
+          <span className="text-lg">{TOKEN_ICONS[selected] || '🪙'}</span>
+        )}
         <span className="font-display font-semibold text-white text-sm">{selected}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -67,10 +73,14 @@ function TokenSelector({ selected, onSelect, exclude, label }: TokenSelectorProp
                       : 'hover:bg-white/[0.04] text-white/70'
                   }`}
                 >
-                  <span className="text-base">{TOKEN_ICONS[token] || '🪙'}</span>
+                  {tokenPricesStore[token]?.image ? (
+                    <img src={tokenPricesStore[token].image} alt={token} className="w-6 h-6 rounded-full flex-shrink-0" />
+                  ) : (
+                    <span className="text-base flex-shrink-0">{TOKEN_ICONS[token] || '🪙'}</span>
+                  )}
                   <div>
                     <div className="font-display font-medium text-sm">{token}</div>
-                    <div className="font-mono text-[10px] text-white/30">${TOKEN_PRICES[token].toLocaleString()}</div>
+                    <div className="font-mono text-[10px] text-white/30">${(tokenPricesStore[token]?.current_price || TOKEN_PRICES[token]).toLocaleString(undefined, { maximumFractionDigits: 6 })}</div>
                   </div>
                 </button>
               ))}
@@ -91,23 +101,25 @@ export function SwapPage() {
   const [swapping, setSwapping] = useState(false)
   const [swapSuccess, setSwapSuccess] = useState(false)
   const openDepositModal = useAppStore(s => s.openDepositModal)
+  const tokenPricesStore = useAppStore(s => s.tokenPrices)
 
   const numFrom = parseFloat(fromAmount) || 0
   const rate = useMemo(() => {
-    const fromPrice = TOKEN_PRICES[fromToken] || 1
-    const toPrice = TOKEN_PRICES[toToken] || 1
+    const fromPrice = tokenPricesStore[fromToken]?.current_price || TOKEN_PRICES[fromToken] || 1
+    const toPrice = tokenPricesStore[toToken]?.current_price || TOKEN_PRICES[toToken] || 1
     return fromPrice / toPrice
-  }, [fromToken, toToken])
+  }, [fromToken, toToken, tokenPricesStore])
 
   const toAmount = useMemo(() => numFrom * rate, [numFrom, rate])
   const priceImpact = useMemo(() => {
     if (numFrom === 0) return 0
-    const valUSD = numFrom * (TOKEN_PRICES[fromToken] || 1)
+    const fromPrice = tokenPricesStore[fromToken]?.current_price || TOKEN_PRICES[fromToken] || 1
+    const valUSD = numFrom * fromPrice
     if (valUSD < 1000) return 0.01
     if (valUSD < 10000) return 0.05
     if (valUSD < 100000) return 0.12
     return 0.45
-  }, [numFrom, fromToken])
+  }, [numFrom, fromToken, tokenPricesStore])
 
   const networkFee = 0.000005  // ~0.000005 SOL
 
@@ -212,11 +224,11 @@ export function SwapPage() {
                 placeholder="0.00"
                 className="flex-1 bg-transparent text-2xl font-display font-bold text-white outline-none placeholder-white/15 min-w-0"
               />
-              <TokenSelector selected={fromToken} onSelect={setFromToken} exclude={toToken} label="You Pay" />
+              <TokenSelector selected={fromToken} onSelect={setFromToken} exclude={toToken} label="You Pay" tokenPricesStore={tokenPricesStore} />
             </div>
             {numFrom > 0 && (
               <div className="mt-1 font-mono text-[10px] text-white/20">
-                ≈ {formatUSD(numFrom * (TOKEN_PRICES[fromToken] || 1))}
+                ≈ {formatUSD(numFrom * (tokenPricesStore[fromToken]?.current_price || TOKEN_PRICES[fromToken] || 1))}
               </div>
             )}
           </div>
@@ -244,11 +256,11 @@ export function SwapPage() {
               <div className="flex-1 text-2xl font-display font-bold text-white/70">
                 {toAmount > 0 ? toAmount.toLocaleString('en-US', { maximumFractionDigits: 6 }) : '0.00'}
               </div>
-              <TokenSelector selected={toToken} onSelect={setToToken} exclude={fromToken} label="You Receive" />
+              <TokenSelector selected={toToken} onSelect={setToToken} exclude={fromToken} label="You Receive" tokenPricesStore={tokenPricesStore} />
             </div>
             {toAmount > 0 && (
               <div className="mt-1 font-mono text-[10px] text-white/20">
-                ≈ {formatUSD(toAmount * (TOKEN_PRICES[toToken] || 1))}
+                ≈ {formatUSD(toAmount * (tokenPricesStore[toToken]?.current_price || TOKEN_PRICES[toToken] || 1))}
               </div>
             )}
           </div>

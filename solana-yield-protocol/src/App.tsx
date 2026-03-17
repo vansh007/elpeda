@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppStore } from '@/store/appStore'
 import { Navbar } from '@/components/Navbar'
@@ -23,6 +24,13 @@ const PAGE_TITLES: Record<string, string> = {
 
 export function App() {
   const activeTab = useAppStore(s => s.activeTab)
+  const fetchPrices = useAppStore(s => s.fetchPrices)
+
+  useEffect(() => {
+    fetchPrices()
+    const interval = setInterval(fetchPrices, 5 * 60 * 1000) // update every 5 mins
+    return () => clearInterval(interval)
+  }, [fetchPrices])
 
   return (
     <div className="min-h-screen bg-surface-0 relative">

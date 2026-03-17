@@ -22,6 +22,7 @@ export function VaultCard({ vault, index }: VaultCardProps) {
   const setSelectedVault = useAppStore(s => s.setSelectedVault)
   const userPositions = useAppStore(s => s.userPositions)
   const userPos = userPositions.find(p => p.vaultId === vault.id)
+  const tokenPrices = useAppStore(s => s.tokenPrices)
 
   const strategyTypes = [...new Set(vault.strategies.map(s => s.type))]
 
@@ -38,7 +39,11 @@ export function VaultCard({ vault, index }: VaultCardProps) {
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-elp-500/20 to-elp-700/20 border border-elp-500/20 flex items-center justify-center relative">
-              <span className="text-lg">{TOKEN_ICONS[vault.depositToken] || '🪙'}</span>
+              {tokenPrices[vault.depositToken]?.image ? (
+                <img src={tokenPrices[vault.depositToken].image} alt={vault.depositToken} className="w-6 h-6 rounded-full" />
+              ) : (
+                <span className="text-lg">{TOKEN_ICONS[vault.depositToken] || '🪙'}</span>
+              )}
               <span className="absolute -bottom-1 -right-1 text-[8px] font-display font-bold bg-surface-1 border border-white/[0.06] text-elp-300 px-1 rounded-md">{vault.symbol}</span>
             </div>
             {vault.status === 'REBALANCING' && (
